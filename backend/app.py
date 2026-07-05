@@ -5,19 +5,17 @@ from flask_jwt_extended import JWTManager
 from config import Config
 from db import db
 from routes.auth import auth_bp
+from routes.properties import properties_bp
 
 app = Flask(__name__)
 app.config.from_object(Config)
 
-# supports_credentials=True is required for cookies to be sent/received
-# cross-origin (frontend on :5173, backend on :5001 during dev). The origin
-# must be an exact match — browsers reject "*" once credentials are involved.
-# Update this list when you deploy to your real frontend URL.
 CORS(app, supports_credentials=True, origins=["http://localhost:5173"])
 
 jwt = JWTManager(app)
 
 app.register_blueprint(auth_bp, url_prefix="/api/auth")
+app.register_blueprint(properties_bp, url_prefix="/api/properties")
 
 
 @app.route("/api/health")
