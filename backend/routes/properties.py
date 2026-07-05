@@ -1,7 +1,11 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt, get_jwt_identity
 
-from models.property import create_property, get_properties_for_admin
+from models.property import (
+    create_property,
+    get_properties_for_admin,
+    delete_property,
+)
 from utils import serialize_doc
 
 properties_bp = Blueprint("properties", __name__)
@@ -14,7 +18,7 @@ def require_admin():
     Returns the logged-in admin's own user id if this request's token has
     role "admin", otherwise returns None. Every route below must check this
     before doing anything — it's what stops a future tenant-role account
-    from creating or listing properties, once tenant logins exist.
+    from creating, listing, or deleting properties, once tenant logins exist.
     """
     claims = get_jwt()
     if claims.get("role") != "admin":
@@ -53,3 +57,20 @@ def list_properties():
 
     properties = get_properties_for_admin(admin_id)
     return jsonify([serialize_doc(p) for p in properties])
+
+
+@properties_bp.route("/<property_id>", methods=["DELETE"])
+@jwt_required()
+def remove_property(property_id):
+    admin_id = require_admin()
+    if not admin_id:
+        return jsonify({"error": "Only admins can delete properties"}), 403
+
+    # NOTE: once tenants exist, add a check here — refuse to delete if this
+    # property currently has an active tenant, to avoid orphaning their
+    # payment history. Coming in the Tenants feature.
+    deleted = delete_property(property_id, admin_id)
+    if not deleted:
+        return jsonify({"error": "Property not found"}), 404
+
+    return jsonify({"status": "deleted"})
