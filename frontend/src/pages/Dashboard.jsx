@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import apiClient from "../api/client";
+import TenantDetailModal from "../components/TenantDetailModal";
 import "./Dashboard.css";
 
 const today = new Date().toISOString().split("T")[0];
@@ -38,6 +39,10 @@ export default function Dashboard() {
   const [tenantHistory, setTenantHistory] = useState({});
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState(null);
+
+  // Which tenant (full object) is currently shown in the detail popup, or
+  // null if the popup is closed.
+  const [selectedTenant, setSelectedTenant] = useState(null);
 
   const loadProperties = useCallback(async () => {
     setListLoading(true);
@@ -359,7 +364,11 @@ export default function Dashboard() {
                   )}
 
                   {tenantHistory[property._id]?.map((tenant) => (
-                    <div className="history-entry" key={tenant._id}>
+                    <div
+                      className="history-entry history-entry-clickable"
+                      key={tenant._id}
+                      onClick={() => setSelectedTenant(tenant)}
+                    >
                       <div className="history-entry-top">
                         <span className="history-tenant-name">{tenant.name}</span>
                         <span
@@ -385,6 +394,33 @@ export default function Dashboard() {
             </div>
           ))}
       </div>
+
+      {selectedTenant && (
+        <TenantDetailModal
+          tenant={selectedTenant}
+          onClose={() => setSelectedTenant(null)}
+          onDocumentsUpdated={(tenantId, driveFolderLink) => {
+            // Update this tenant everywhere it's currently cached, so the
+            // link shows up immediately without needing a re-fetch.
+            setTenantHistory((prev) => {
+              const next = { ...prev };
+              for (const propId of Object.keys(next)) {
+                next[propId] = next[propId].map((t) =>
+                  t._id === tenantId
+                    ? { ...t, documents: { ...t.documents, driveFolderLink } }
+                    : t
+                );
+              }
+              return next;
+            });
+            setSelectedTenant((prev) =>
+              prev && prev._id === tenantId
+                ? { ...prev, documents: { ...prev.documents, driveFolderLink } }
+                : prev
+            );
+          }}
+        />
+      )}
     </div>
   );
 }

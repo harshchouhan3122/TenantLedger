@@ -7,6 +7,7 @@ from models.tenant import (
     get_tenants_for_admin,
     get_active_tenant_for_property,
     move_out_tenant,
+    update_tenant_documents,
 )
 from models.property import get_property_by_id
 from utils import serialize_doc
@@ -22,11 +23,6 @@ def require_admin():
 
 
 def _tenant_public(tenant_doc):
-    """
-    Serialize a tenant for API responses WITHOUT ever sending the encrypted
-    Aadhar value to the frontend — only a masked version goes out. There's
-    no legitimate reason the browser needs the encrypted blob at all.
-    """
     data = serialize_doc(tenant_doc)
     data.pop("aadharNo", None)
     data["aadharMasked"] = f"XXXX-XXXX-{tenant_doc.get('aadharLast4', '****')}"
@@ -97,3 +93,20 @@ def move_out(tenant_id):
         return jsonify({"error": "Active tenant not found for this property"}), 404
 
     return jsonify({"status": "moved out"})
+
+
+@tenants_bp.route("/<tenant_id>/documents", methods=["PATCH"])
+@jwt_required()
+def update_documents(tenant_id):
+    admin_id = require_admin()
+    if not admin_id:
+        return jsonify({"error": "Only admins can do this"}), 403
+
+    data = request.get_json(silent=True) or {}
+    drive_link = (data.get("driveFolderLink") or "").strip() or None
+
+    success = update_tenant_documents(tenant_id, admin_id, drive_link)
+    if not success:
+        return jsonify({"error": "Tenant not found"}), 404
+
+    return jsonify({"status": "updated", "driveFolderLink": drive_link})

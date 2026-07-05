@@ -1,11 +1,17 @@
 .navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  box-sizing: border-box;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.9rem 1.5rem;
+  padding: 0 1.5rem;
   background: #ffffff;
   border-bottom: 1px solid #e5e7eb;
-  margin-bottom: 1.5rem;
+  z-index: 1000;
 }
 
 .navbar-logo {
@@ -59,4 +65,11 @@
 
 .navbar-login-btn:hover {
   background: #1d4ed8;
+}
+
+/* Since the navbar is now fixed (removed from normal document flow), the
+   page content needs top padding equal to the navbar's height — otherwise
+   the first bit of every page would render underneath it. */
+.app-content {
+  padding-top: 60px;
 }

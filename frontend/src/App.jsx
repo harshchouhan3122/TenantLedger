@@ -10,23 +10,25 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        {/* Rendered outside <Routes>, so it's always present on every page —
-            Home, Login, and every protected page alike. */}
         <Navbar />
 
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        {/* Padding-top for this wrapper (set in Navbar.css) is what keeps
+            page content from sliding underneath the now-fixed navbar. */}
+        <main className="app-content">
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </main>
       </BrowserRouter>
     </AuthProvider>
   );
