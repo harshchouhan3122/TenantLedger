@@ -6,6 +6,7 @@ from models.property import (
     get_properties_for_admin,
     delete_property,
 )
+from models.tenant import get_active_tenant_for_property
 from utils import serialize_doc
 
 properties_bp = Blueprint("properties", __name__)
@@ -14,12 +15,6 @@ VALID_TYPES = ("shop", "house")
 
 
 def require_admin():
-    """
-    Returns the logged-in admin's own user id if this request's token has
-    role "admin", otherwise returns None. Every route below must check this
-    before doing anything — it's what stops a future tenant-role account
-    from creating, listing, or deleting properties, once tenant logins exist.
-    """
     claims = get_jwt()
     if claims.get("role") != "admin":
         return None
@@ -56,7 +51,17 @@ def list_properties():
         return jsonify({"error": "Only admins can view this"}), 403
 
     properties = get_properties_for_admin(admin_id)
-    return jsonify([serialize_doc(p) for p in properties])
+
+    result = []
+    for property_doc in properties:
+        serialized = serialize_doc(property_doc)
+        active_tenant = get_active_tenant_for_property(property_doc["_id"], admin_id)
+        serialized["occupied"] = active_tenant is not None
+        serialized["activeTenantId"] = str(active_tenant["_id"]) if active_tenant else None
+        serialized["activeTenantName"] = active_tenant["name"] if active_tenant else None
+        result.append(serialized)
+
+    return jsonify(result)
 
 
 @properties_bp.route("/<property_id>", methods=["DELETE"])
@@ -66,9 +71,20 @@ def remove_property(property_id):
     if not admin_id:
         return jsonify({"error": "Only admins can delete properties"}), 403
 
-    # NOTE: once tenants exist, add a check here — refuse to delete if this
-    # property currently has an active tenant, to avoid orphaning their
-    # payment history. Coming in the Tenants feature.
+    # Block deleting a property that still has an active tenant — otherwise
+    # that tenant's records would point to a property that no longer exists.
+    active_tenant = get_active_tenant_for_property(property_id, admin_id)
+    if active_tenant:
+        return (
+            jsonify(
+                {
+                    "error": f"Can't delete — this property still has an active "
+                    f"tenant ({active_tenant['name']}). Move them out first."
+                }
+            ),
+            409,
+        )
+
     deleted = delete_property(property_id, admin_id)
     if not deleted:
         return jsonify({"error": "Property not found"}), 404
