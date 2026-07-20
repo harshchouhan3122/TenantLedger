@@ -7,6 +7,7 @@ from db import db
 from routes.auth import auth_bp
 from routes.properties import properties_bp
 from routes.tenants import tenants_bp
+from routes.payments import payments_bp
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -18,6 +19,7 @@ jwt = JWTManager(app)
 app.register_blueprint(auth_bp, url_prefix="/api/auth")
 app.register_blueprint(properties_bp, url_prefix="/api/properties")
 app.register_blueprint(tenants_bp, url_prefix="/api/tenants")
+app.register_blueprint(payments_bp, url_prefix="/api/payments")
 
 
 @app.route("/api/health")

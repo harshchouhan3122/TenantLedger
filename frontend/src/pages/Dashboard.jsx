@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import apiClient from "../api/client";
 import TenantDetailModal from "../components/TenantDetailModal";
+import PropertyHistoryModal from "../components/PropertyHistoryModal";
+import PropertyChargeTypesModal from "../components/PropertyChargeTypesModal";
 import "./Dashboard.css";
 
 const today = new Date().toISOString().split("T")[0];
@@ -33,16 +35,22 @@ export default function Dashboard() {
 
   // --- Tenant history state ---
   // Which property's history panel is currently open (or null if none).
-  const [expandedPropertyId, setExpandedPropertyId] = useState(null);
+  // Which property's history modal is open (whole property object, so the
+  // modal can show its name), or null if closed.
+  const [historyModalFor, setHistoryModalFor] = useState(null);
   // Cache of already-fetched history, keyed by propertyId, so re-opening
   // a panel you've already viewed doesn't re-fetch from the server.
   const [tenantHistory, setTenantHistory] = useState({});
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState(null);
 
-  // Which tenant (full object) is currently shown in the detail popup, or
-  // null if the popup is closed.
-  const [selectedTenant, setSelectedTenant] = useState(null);
+  // Which property's charge-types modal is open, or null if closed.
+  const [chargeTypesModalFor, setChargeTypesModalFor] = useState(null);
+
+  // Holds { tenant, property } for whichever tenant's detail popup is open,
+  // or null if closed. The property is needed alongside the tenant so the
+  // billing form can pre-fill from that property's charge type template.
+  const [selectedTenantContext, setSelectedTenantContext] = useState(null);
 
   const loadProperties = useCallback(async () => {
     setListLoading(true);
@@ -167,28 +175,29 @@ export default function Dashboard() {
 
   // --- Tenant history handlers ---
 
-  async function toggleHistory(propertyId) {
-    if (expandedPropertyId === propertyId) {
-      setExpandedPropertyId(null);
-      return;
-    }
-
-    setExpandedPropertyId(propertyId);
+  async function openHistoryModal(property) {
+    setHistoryModalFor(property);
     setHistoryError(null);
 
     // Already fetched this property's history in this session — no need
     // to hit the server again.
-    if (tenantHistory[propertyId]) return;
+    if (tenantHistory[property._id]) return;
 
     setHistoryLoading(true);
     try {
-      const response = await apiClient.get(`/tenants?propertyId=${propertyId}`);
-      setTenantHistory((prev) => ({ ...prev, [propertyId]: response.data }));
+      const response = await apiClient.get(`/tenants?propertyId=${property._id}`);
+      setTenantHistory((prev) => ({ ...prev, [property._id]: response.data }));
     } catch (err) {
       setHistoryError("Couldn't load tenant history for this property.");
     } finally {
       setHistoryLoading(false);
     }
+  }
+
+  function handleChargeTypesUpdated(propertyId, updatedChargeTypes) {
+    setProperties((prev) =>
+      prev.map((p) => (p._id === propertyId ? { ...p, chargeTypes: updatedChargeTypes } : p))
+    );
   }
 
   return (
@@ -346,59 +355,47 @@ export default function Dashboard() {
 
               <button
                 className="history-toggle-btn"
-                onClick={() => toggleHistory(property._id)}
+                onClick={() => openHistoryModal(property)}
               >
-                {expandedPropertyId === property._id ? "Hide history ▲" : "View history ▼"}
+                View history ▸
               </button>
 
-              {expandedPropertyId === property._id && (
-                <div className="history-panel">
-                  {historyLoading && !tenantHistory[property._id] && (
-                    <p className="history-loading">Loading history…</p>
-                  )}
-
-                  {historyError && <p className="error-message">{historyError}</p>}
-
-                  {tenantHistory[property._id] && tenantHistory[property._id].length === 0 && (
-                    <p className="history-empty">No tenants have stayed here yet.</p>
-                  )}
-
-                  {tenantHistory[property._id]?.map((tenant) => (
-                    <div
-                      className="history-entry history-entry-clickable"
-                      key={tenant._id}
-                      onClick={() => setSelectedTenant(tenant)}
-                    >
-                      <div className="history-entry-top">
-                        <span className="history-tenant-name">{tenant.name}</span>
-                        <span
-                          className={
-                            tenant.active
-                              ? "badge badge-occupied history-badge"
-                              : "badge history-badge history-badge-past"
-                          }
-                        >
-                          {tenant.active ? "Current" : "Moved out"}
-                        </span>
-                      </div>
-                      <div className="history-entry-details">
-                        {tenant.moveInDate} → {tenant.moveOutDate || "present"}
-                      </div>
-                      <div className="history-entry-details">
-                        {tenant.phone} · Aadhar {tenant.aadharMasked}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <button
+                className="history-toggle-btn"
+                onClick={() => setChargeTypesModalFor(property)}
+              >
+                Manage charges ▸
+              </button>
             </div>
           ))}
       </div>
 
-      {selectedTenant && (
+      {chargeTypesModalFor && (
+        <PropertyChargeTypesModal
+          property={chargeTypesModalFor}
+          onClose={() => setChargeTypesModalFor(null)}
+          onUpdated={handleChargeTypesUpdated}
+        />
+      )}
+
+      {historyModalFor && (
+        <PropertyHistoryModal
+          propertyName={historyModalFor.name}
+          tenants={tenantHistory[historyModalFor._id]}
+          loading={historyLoading && !tenantHistory[historyModalFor._id]}
+          error={historyError}
+          onClose={() => setHistoryModalFor(null)}
+          onSelectTenant={(tenant) =>
+            setSelectedTenantContext({ tenant, property: historyModalFor })
+          }
+        />
+      )}
+
+      {selectedTenantContext && (
         <TenantDetailModal
-          tenant={selectedTenant}
-          onClose={() => setSelectedTenant(null)}
+          tenant={selectedTenantContext.tenant}
+          property={selectedTenantContext.property}
+          onClose={() => setSelectedTenantContext(null)}
           onDocumentsUpdated={(tenantId, driveFolderLink) => {
             // Update this tenant everywhere it's currently cached, so the
             // link shows up immediately without needing a re-fetch.
@@ -413,9 +410,15 @@ export default function Dashboard() {
               }
               return next;
             });
-            setSelectedTenant((prev) =>
-              prev && prev._id === tenantId
-                ? { ...prev, documents: { ...prev.documents, driveFolderLink } }
+            setSelectedTenantContext((prev) =>
+              prev && prev.tenant._id === tenantId
+                ? {
+                    ...prev,
+                    tenant: {
+                      ...prev.tenant,
+                      documents: { ...prev.tenant.documents, driveFolderLink },
+                    },
+                  }
                 : prev
             );
           }}

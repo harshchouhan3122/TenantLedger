@@ -247,14 +247,6 @@
   text-decoration: underline;
 }
 
-.history-panel {
-  border-top: 1px dashed #e5e7eb;
-  padding-top: 0.6rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-}
-
 .history-loading,
 .history-empty {
   color: #6b7280;

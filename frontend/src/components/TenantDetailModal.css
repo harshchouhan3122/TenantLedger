@@ -125,3 +125,104 @@
   line-height: 1.5;
   margin: 0;
 }
+
+.payment-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.6rem;
+}
+
+.payment-history-header h3 {
+  margin: 0;
+}
+
+.add-bill-btn {
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.add-bill-btn:hover {
+  background: #1d4ed8;
+}
+
+.payment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.payment-card {
+  background: #f9fafb;
+  border-radius: 10px;
+  padding: 0.7rem 0.85rem;
+}
+
+.payment-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.3rem;
+}
+
+.payment-month {
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: #1a1a1a;
+}
+
+.payment-charges-summary {
+  font-size: 0.8rem;
+  color: #374151;
+  line-height: 1.4;
+}
+
+.payment-due-line {
+  font-size: 0.78rem;
+  color: #b45309;
+  margin-top: 0.2rem;
+}
+
+.payment-paid-line {
+  font-size: 0.78rem;
+  color: #16a34a;
+  margin-top: 0.2rem;
+}
+
+.payment-actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.payment-actions button {
+  background: none;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.76rem;
+  cursor: pointer;
+  color: #374151;
+}
+
+.payment-actions button:hover {
+  background: #f3f4f6;
+}
+
+.payment-actions .mark-paid-btn {
+  background: #16a34a;
+  color: white;
+  border-color: #16a34a;
+}
+
+.payment-actions .mark-paid-btn:hover {
+  background: #15803d;
+}

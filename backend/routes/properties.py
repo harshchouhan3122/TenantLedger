@@ -5,6 +5,9 @@ from models.property import (
     create_property,
     get_properties_for_admin,
     delete_property,
+    add_charge_type,
+    update_charge_type,
+    delete_charge_type,
 )
 from models.tenant import get_active_tenant_for_property
 from utils import serialize_doc
@@ -21,6 +24,13 @@ def require_admin():
     return get_jwt_identity()
 
 
+def _parse_amount(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
 @properties_bp.route("", methods=["POST"])
 @jwt_required()
 def add_property():
@@ -35,7 +45,6 @@ def add_property():
 
     if not name:
         return jsonify({"error": "Property name is required"}), 400
-
     if property_type not in VALID_TYPES:
         return jsonify({"error": "Type must be 'shop' or 'house'"}), 400
 
@@ -88,5 +97,65 @@ def remove_property(property_id):
     deleted = delete_property(property_id, admin_id)
     if not deleted:
         return jsonify({"error": "Property not found"}), 404
+
+    return jsonify({"status": "deleted"})
+
+
+@properties_bp.route("/<property_id>/charge-types", methods=["POST"])
+@jwt_required()
+def add_property_charge_type(property_id):
+    admin_id = require_admin()
+    if not admin_id:
+        return jsonify({"error": "Only admins can do this"}), 403
+
+    data = request.get_json(silent=True) or {}
+    label = (data.get("label") or "").strip()
+    default_amount = _parse_amount(data.get("defaultAmount"))
+
+    if not label:
+        return jsonify({"error": "Charge type label is required"}), 400
+    if default_amount is None:
+        return jsonify({"error": "Default amount must be a number"}), 400
+
+    charge_type = add_charge_type(property_id, admin_id, label, default_amount)
+    if charge_type is None:
+        return jsonify({"error": "Property not found"}), 404
+
+    return jsonify(charge_type), 201
+
+
+@properties_bp.route("/<property_id>/charge-types/<charge_type_id>", methods=["PATCH"])
+@jwt_required()
+def edit_property_charge_type(property_id, charge_type_id):
+    admin_id = require_admin()
+    if not admin_id:
+        return jsonify({"error": "Only admins can do this"}), 403
+
+    data = request.get_json(silent=True) or {}
+    label = (data.get("label") or "").strip()
+    default_amount = _parse_amount(data.get("defaultAmount"))
+
+    if not label:
+        return jsonify({"error": "Charge type label is required"}), 400
+    if default_amount is None:
+        return jsonify({"error": "Default amount must be a number"}), 400
+
+    success = update_charge_type(property_id, admin_id, charge_type_id, label, default_amount)
+    if not success:
+        return jsonify({"error": "Charge type not found"}), 404
+
+    return jsonify({"status": "updated"})
+
+
+@properties_bp.route("/<property_id>/charge-types/<charge_type_id>", methods=["DELETE"])
+@jwt_required()
+def remove_property_charge_type(property_id, charge_type_id):
+    admin_id = require_admin()
+    if not admin_id:
+        return jsonify({"error": "Only admins can do this"}), 403
+
+    success = delete_charge_type(property_id, admin_id, charge_type_id)
+    if not success:
+        return jsonify({"error": "Charge type not found"}), 404
 
     return jsonify({"status": "deleted"})

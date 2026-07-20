@@ -15,6 +15,17 @@ def get_active_tenant_for_property(property_id, admin_id):
     )
 
 
+def get_tenant_by_id(tenant_id, admin_id):
+    """
+    Fetches one tenant, but only if it belongs to this admin. Needed by the
+    payments feature to look up which property a tenant belongs to, and
+    their name, when creating a bill.
+    """
+    return tenants_collection.find_one(
+        {"_id": ObjectId(tenant_id), "adminId": ObjectId(admin_id)}
+    )
+
+
 def create_tenant(admin_id, property_id, name, phone, aadhar_no, move_in_date):
     aadhar_clean = aadhar_no.replace(" ", "").replace("-", "")
 
