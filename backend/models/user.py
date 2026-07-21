@@ -1,5 +1,6 @@
 import bcrypt
 from db import db
+from bson import ObjectId
 
 users_collection = db.users
 
@@ -41,3 +42,30 @@ def get_users():
     users = [{"username": user['name'], "role": user['role'], "contact": user['phone'][3:] } for user in users]
     # users = [user['name'] for user in users]
     return users
+
+
+def find_user_by_id(user_id):
+    return users_collection.find_one({"_id": ObjectId(user_id)})
+
+
+def update_user_profile(user_id, name, phone):
+    users_collection.update_one(
+        {"_id": ObjectId(user_id)},
+        {
+            "$set": {
+                "name": name,
+                "phone": phone,
+            }
+        },
+    )
+    return find_user_by_id(user_id)
+
+def update_password(user_id, password_hash):
+    users_collection.update_one(
+        {"_id": ObjectId(user_id)},
+        {
+            "$set": {
+                "passwordHash": password_hash,
+            }
+        },
+    )

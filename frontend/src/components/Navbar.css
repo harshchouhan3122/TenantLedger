@@ -73,3 +73,12 @@
 .app-content {
   padding-top: 60px;
 }
+
+.navbar-username{
+    cursor:pointer;
+    font-weight:600;
+}
+
+.navbar-username:hover{
+    color:#2563eb;
+}

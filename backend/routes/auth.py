@@ -1,6 +1,14 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import ( create_access_token, create_refresh_token, jwt_required, get_jwt_identity, get_jwt, set_access_cookies, set_refresh_cookies, unset_jwt_cookies )
-from models.user import find_user_by_phone, verify_password
+import bcrypt
+
+from models.user import (
+    find_user_by_phone,
+    verify_password,
+    find_user_by_id,
+    update_user_profile,
+    update_password,
+)
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -89,5 +97,90 @@ def me():
             "role": claims.get("role"),
             "name": claims.get("name"),
             "tenantId": claims.get("tenantId"),
+        }
+    )
+
+
+@auth_bp.route("/profile", methods=["GET"])
+@jwt_required()
+def profile():
+
+    user = find_user_by_id(get_jwt_identity())
+
+    return jsonify(
+        {
+            "id": str(user["_id"]),
+            "name": user["name"],
+            "phone": user["phone"],
+            "role": user["role"],
+        }
+    )
+
+
+@auth_bp.route("/profile", methods=["PATCH"])
+@jwt_required()
+def edit_profile():
+
+    data = request.get_json(silent=True) or {}
+
+    name = data.get("name", "").strip()
+    phone = data.get("phone", "").strip()
+
+    if not name:
+        return jsonify({"error": "Name is required"}), 400
+
+    if not phone:
+        return jsonify({"error": "Phone is required"}), 400
+
+    user = update_user_profile(
+        get_jwt_identity(),
+        name,
+        phone,
+    )
+
+    return jsonify(
+        {
+            "id": str(user["_id"]),
+            "name": user["name"],
+            "phone": user["phone"],
+            "role": user["role"],
+        }
+    )
+
+
+@auth_bp.route("/change-password", methods=["PATCH"])
+@jwt_required()
+def change_password():
+
+    data = request.get_json(silent=True) or {}
+
+    current_password = data.get("currentPassword", "")
+    new_password = data.get("newPassword", "")
+    confirm_password = data.get("confirmPassword", "")
+
+    if not current_password or not new_password or not confirm_password:
+        return jsonify({"error": "All fields are required."}), 400
+
+    if new_password != confirm_password:
+        return jsonify({"error": "Passwords do not match."}), 400
+
+    user = find_user_by_id(get_jwt_identity())
+
+    if not verify_password(current_password, user["passwordHash"]):
+        return jsonify({"error": "Current password is incorrect."}), 401
+
+    password_hash = bcrypt.hashpw(
+        new_password.encode("utf-8"),
+        bcrypt.gensalt(),
+    ).decode("utf-8")
+
+    update_password(
+        get_jwt_identity(),
+        password_hash,
+    )
+
+    return jsonify(
+        {
+            "message": "Password updated successfully."
         }
     )
