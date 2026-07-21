@@ -53,12 +53,33 @@ def get_tenants_for_admin(admin_id, property_id=None):
     return list(tenants_collection.find(query).sort("moveInDate", -1))
 
 
+def update_tenant(tenant_id, admin_id, name, phone, aadhar_no, move_in_date):
+    update_fields = {
+        "name": name,
+        "phone": phone,
+        "moveInDate": move_in_date,
+    }
+
+    if aadhar_no:
+        aadhar_clean = aadhar_no.replace(" ", "").replace("-", "")
+        update_fields["aadharNo"] = encrypt_value(aadhar_clean)
+        update_fields["aadharLast4"] = aadhar_clean[-4:] if len(aadhar_clean) >= 4 else ""
+
+    result = tenants_collection.update_one(
+        {"_id": ObjectId(tenant_id), "adminId": ObjectId(admin_id)},
+        {"$set": update_fields},
+    )
+    # matched_count, not modified_count — same fix as payments. Editing a
+    # tenant back to identical values shouldn't be reported as a failure.
+    return result.matched_count > 0
+
+
 def move_out_tenant(tenant_id, admin_id, move_out_date):
     result = tenants_collection.update_one(
         {"_id": ObjectId(tenant_id), "adminId": ObjectId(admin_id), "active": True},
         {"$set": {"moveOutDate": move_out_date, "active": False}},
     )
-    return result.modified_count > 0
+    return result.matched_count > 0
 
 
 def update_tenant_documents(tenant_id, admin_id, drive_folder_link):
@@ -73,4 +94,4 @@ def update_tenant_documents(tenant_id, admin_id, drive_folder_link):
         {"_id": ObjectId(tenant_id), "adminId": ObjectId(admin_id)},
         {"$set": {"documents.driveFolderLink": drive_folder_link}},
     )
-    return result.modified_count > 0
+    return result.matched_count > 0

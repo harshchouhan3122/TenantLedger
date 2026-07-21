@@ -5,11 +5,26 @@ import SendReminderConfirmModal from "./SendReminderConfirmModal";
 import { paymentTotal } from "../utils/messageTemplate";
 import "./TenantDetailModal.css";
 
-export default function TenantDetailModal({ tenant, property, onClose, onDocumentsUpdated }) {
+export default function TenantDetailModal({
+  tenant,
+  property,
+  onClose,
+  onDocumentsUpdated,
+  onTenantUpdated,
+}) {
   const [driveLink, setDriveLink] = useState(tenant?.documents?.driveFolderLink || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [saved, setSaved] = useState(false);
+
+  // --- Edit tenant details state ---
+  const [isEditingTenant, setIsEditingTenant] = useState(false);
+  const [editName, setEditName] = useState(tenant?.name || "");
+  const [editPhone, setEditPhone] = useState(tenant?.phone || "");
+  const [editAadhar, setEditAadhar] = useState(""); // blank = leave unchanged
+  const [editMoveInDate, setEditMoveInDate] = useState(tenant?.moveInDate || "");
+  const [tenantSaving, setTenantSaving] = useState(false);
+  const [tenantEditError, setTenantEditError] = useState(null);
 
   const [payments, setPayments] = useState([]);
   const [paymentsLoading, setPaymentsLoading] = useState(true);
@@ -59,6 +74,37 @@ export default function TenantDetailModal({ tenant, property, onClose, onDocumen
     }
   }
 
+  function startEditTenant() {
+    setEditName(tenant.name);
+    setEditPhone(tenant.phone);
+    setEditAadhar("");
+    setEditMoveInDate(tenant.moveInDate);
+    setTenantEditError(null);
+    setIsEditingTenant(true);
+  }
+
+  async function handleSaveTenant(e) {
+    e.preventDefault();
+    setTenantSaving(true);
+    setTenantEditError(null);
+    try {
+      const response = await apiClient.patch(`/tenants/${tenant._id}`, {
+        name: editName.trim(),
+        phone: editPhone.trim(),
+        aadharNo: editAadhar.trim(), // blank is fine — backend leaves it unchanged
+        moveInDate: editMoveInDate,
+      });
+      onTenantUpdated?.(response.data);
+      setIsEditingTenant(false);
+    } catch (err) {
+      setTenantEditError(
+        err.response?.data?.error || "Couldn't save changes. Please try again."
+      );
+    } finally {
+      setTenantSaving(false);
+    }
+  }
+
   async function handleDeletePayment(payment) {
     const confirmed = window.confirm(`Delete the ${payment.month} bill? This can't be undone.`);
     if (!confirmed) return;
@@ -98,11 +144,20 @@ export default function TenantDetailModal({ tenant, property, onClose, onDocumen
   }
 
   function handleBillSaved(savedPayment) {
+    // Capture which mode we were in BEFORE clearing billFormFor, since
+    // that's how we know whether this was a brand-new bill or an edit —
+    // determines whether the WhatsApp message says "Your rent details"
+    // or "Updated bill details".
+    const variant = billFormFor === "new" ? "new" : "updated";
     setBillFormFor(null);
     loadPayments();
-    // Per the agreed flow: prompt to send a reminder both on create AND
-    // on editing an existing pending bill.
-    setReminderConfirmFor(savedPayment);
+    setReminderConfirmFor({ payment: savedPayment, variant });
+  }
+
+  function handleSendReminderClick(payment) {
+    // Manually triggered from the payment card itself, any time — not just
+    // right after saving. Reads as a plain reminder, not "bill saved".
+    setReminderConfirmFor({ payment, variant: "reminder" });
   }
 
   return (
@@ -111,9 +166,16 @@ export default function TenantDetailModal({ tenant, property, onClose, onDocumen
         <div className="modal-card" onClick={(e) => e.stopPropagation()}>
           <div className="modal-header">
             <h2>{tenant.name}</h2>
-            <button className="modal-close-btn" onClick={onClose} aria-label="Close">
-              ×
-            </button>
+            <div className="modal-header-actions">
+              {!isEditingTenant && (
+                <button className="edit-tenant-btn" onClick={startEditTenant}>
+                  Edit
+                </button>
+              )}
+              <button className="modal-close-btn" onClick={onClose} aria-label="Close">
+                ×
+              </button>
+            </div>
           </div>
 
           <span
@@ -124,24 +186,79 @@ export default function TenantDetailModal({ tenant, property, onClose, onDocumen
             {tenant.active ? "Current tenant" : "Moved out"}
           </span>
 
-          <div className="modal-section">
-            <div className="modal-row">
-              <span className="modal-label">Phone</span>
-              <span>{tenant.phone}</span>
+          {isEditingTenant ? (
+            <form className="modal-section tenant-edit-form" onSubmit={handleSaveTenant}>
+              <label htmlFor="editName">Name</label>
+              <input
+                id="editName"
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                required
+              />
+
+              <label htmlFor="editPhone">Phone</label>
+              <input
+                id="editPhone"
+                type="tel"
+                value={editPhone}
+                onChange={(e) => setEditPhone(e.target.value)}
+                required
+              />
+
+              <label htmlFor="editAadhar">Aadhar number</label>
+              <input
+                id="editAadhar"
+                type="text"
+                placeholder={`Leave blank to keep ${tenant.aadharMasked}`}
+                value={editAadhar}
+                onChange={(e) => setEditAadhar(e.target.value)}
+              />
+
+              <label htmlFor="editMoveInDate">Move-in date</label>
+              <input
+                id="editMoveInDate"
+                type="date"
+                value={editMoveInDate}
+                onChange={(e) => setEditMoveInDate(e.target.value)}
+                required
+              />
+
+              {tenantEditError && <div className="error-message">{tenantEditError}</div>}
+
+              <div className="tenant-edit-actions">
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  onClick={() => setIsEditingTenant(false)}
+                >
+                  Cancel
+                </button>
+                <button type="submit" disabled={tenantSaving}>
+                  {tenantSaving ? "Saving…" : "Save changes"}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="modal-section">
+              <div className="modal-row">
+                <span className="modal-label">Phone</span>
+                <span>{tenant.phone}</span>
+              </div>
+              <div className="modal-row">
+                <span className="modal-label">Aadhar</span>
+                <span>{tenant.aadharMasked}</span>
+              </div>
+              <div className="modal-row">
+                <span className="modal-label">Move-in</span>
+                <span>{tenant.moveInDate}</span>
+              </div>
+              <div className="modal-row">
+                <span className="modal-label">Move-out</span>
+                <span>{tenant.moveOutDate || "—"}</span>
+              </div>
             </div>
-            <div className="modal-row">
-              <span className="modal-label">Aadhar</span>
-              <span>{tenant.aadharMasked}</span>
-            </div>
-            <div className="modal-row">
-              <span className="modal-label">Move-in</span>
-              <span>{tenant.moveInDate}</span>
-            </div>
-            <div className="modal-row">
-              <span className="modal-label">Move-out</span>
-              <span>{tenant.moveOutDate || "—"}</span>
-            </div>
-          </div>
+          )}
 
           <div className="modal-section">
             <h3>Documents</h3>
@@ -232,6 +349,12 @@ export default function TenantDetailModal({ tenant, property, onClose, onDocumen
                         <button onClick={() => setBillFormFor(payment)}>Edit</button>
                         <button onClick={() => handleDeletePayment(payment)}>Delete</button>
                         <button
+                          className="send-reminder-btn"
+                          onClick={() => handleSendReminderClick(payment)}
+                        >
+                          Send reminder
+                        </button>
+                        <button
                           className="mark-paid-btn"
                           onClick={() => handleMarkPaid(payment)}
                         >
@@ -265,7 +388,8 @@ export default function TenantDetailModal({ tenant, property, onClose, onDocumen
       {reminderConfirmFor && (
         <SendReminderConfirmModal
           tenant={tenant}
-          payment={reminderConfirmFor}
+          payment={reminderConfirmFor.payment}
+          variant={reminderConfirmFor.variant}
           onClose={() => setReminderConfirmFor(null)}
         />
       )}

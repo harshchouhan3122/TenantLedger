@@ -2,7 +2,13 @@ export function paymentTotal(payment) {
   return payment.charges.reduce((sum, c) => sum + Number(c.amount), 0);
 }
 
-export function buildReminderMessage(tenant, payment) {
+const INTRO_LINES = {
+  new: (month) => `Your rent details for ${month}:`,
+  updated: (month) => `Updated bill details for ${month}:`,
+  reminder: (month) => `Reminder — your rent details for ${month} are still pending:`,
+};
+
+export function buildReminderMessage(tenant, payment, variant = "new") {
   const total = paymentTotal(payment);
   const chargeLines = payment.charges
     .map((c) => `- ${c.label}: ₹${c.amount}`)
@@ -16,10 +22,11 @@ export function buildReminderMessage(tenant, payment) {
       : "";
 
   const remarkLine = payment.remark ? `\nRemark: ${payment.remark}` : "";
+  const introLine = (INTRO_LINES[variant] || INTRO_LINES.new)(payment.month);
 
   return (
     `Hi ${tenant.name},\n` +
-    `Your rent details for ${payment.month}:\n` +
+    `${introLine}\n` +
     `${chargeLines}\n` +
     `Total: ₹${total}` +
     dueLine +
@@ -29,7 +36,20 @@ export function buildReminderMessage(tenant, payment) {
 }
 
 export function buildWhatsAppLink(phone, message) {
-  // wa.me expects digits only, no "+" or spaces/dashes.
-  const cleanPhone = phone.replace(/[^\d+]/g, "").replace(/^\+/, "");
-  return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+  // wa.me needs digits only, WITH country code, no "+", no spaces/dashes.
+  let digitsOnly = (phone || "").replace(/\D/g, "");
+
+  // If it looks like a bare 10-digit Indian number (no country code was
+  // ever entered), assume +91 — otherwise wa.me can't route the message
+  // correctly even though the link looks "valid".
+  if (digitsOnly.length === 10) {
+    digitsOnly = "91" + digitsOnly;
+  }
+
+  return `https://wa.me/${digitsOnly}?text=${encodeURIComponent(message)}`;
+}
+
+export function phoneLooksIncomplete(phone) {
+  const digitsOnly = (phone || "").replace(/\D/g, "");
+  return digitsOnly.length < 10;
 }

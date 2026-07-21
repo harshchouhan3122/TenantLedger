@@ -9,9 +9,10 @@ def create_property(admin_id, name, property_type, address):
     property_doc = {
         "adminId": ObjectId(admin_id),
         "name": name,
-        "type": property_type,  # "shop" | "house"
+        "type": property_type,
         "address": address,
         "documents": {"driveFolderLink": None, "files": []},
+        "chargeTypes": [],
     }
     result = properties_collection.insert_one(property_doc)
     property_doc["_id"] = result.inserted_id
@@ -84,7 +85,8 @@ def update_charge_type(property_id, admin_id, charge_type_id, label, default_amo
             }
         },
     )
-    return result.modified_count > 0
+    # matched_count, not modified_count — same fix as elsewhere.
+    return result.matched_count > 0
 
 
 def delete_charge_type(property_id, admin_id, charge_type_id):
@@ -92,4 +94,4 @@ def delete_charge_type(property_id, admin_id, charge_type_id):
         {"_id": ObjectId(property_id), "adminId": ObjectId(admin_id)},
         {"$pull": {"chargeTypes": {"id": charge_type_id}}},
     )
-    return result.modified_count > 0
+    return result.matched_count > 0

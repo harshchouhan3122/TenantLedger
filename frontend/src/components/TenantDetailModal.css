@@ -119,6 +119,85 @@
   text-decoration: underline;
 }
 
+.modal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.edit-tenant-btn {
+  background: none;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.78rem;
+  color: #374151;
+  cursor: pointer;
+}
+
+.edit-tenant-btn:hover {
+  background: #f3f4f6;
+}
+
+.tenant-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.tenant-edit-form label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #374151;
+  margin-top: 0.4rem;
+}
+
+.tenant-edit-form input {
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.87rem;
+}
+
+.tenant-edit-actions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.9rem;
+}
+
+.tenant-edit-actions button {
+  flex: 1;
+}
+
+.tenant-edit-actions button[type="submit"] {
+  background: #16a34a;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.55rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tenant-edit-actions button[type="submit"]:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.secondary-btn {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 0.55rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.secondary-btn:hover {
+  background: #e5e7eb;
+}
+
 .modal-placeholder {
   font-size: 0.85rem;
   color: #6b7280;
@@ -225,4 +304,14 @@
 
 .payment-actions .mark-paid-btn:hover {
   background: #15803d;
+}
+
+.payment-actions .send-reminder-btn {
+  background: #eff6ff;
+  color: #2563eb;
+  border-color: #bfdbfe;
+}
+
+.payment-actions .send-reminder-btn:hover {
+  background: #dbeafe;
 }

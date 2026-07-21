@@ -1,22 +1,30 @@
-import { buildReminderMessage, buildWhatsAppLink, paymentTotal } from "../utils/messageTemplate";
+import {
+  buildReminderMessage,
+  buildWhatsAppLink,
+  paymentTotal,
+  phoneLooksIncomplete,
+} from "../utils/messageTemplate";
 import "./SendReminderConfirmModal.css";
 
-export default function SendReminderConfirmModal({ tenant, payment, onClose }) {
+const TITLES = {
+  new: "Bill saved",
+  updated: "Bill updated",
+  reminder: "Send reminder",
+};
+
+export default function SendReminderConfirmModal({ tenant, payment, variant = "new", onClose }) {
   const total = paymentTotal(payment);
   const chargesSummary = payment.charges.map((c) => `${c.label} ₹${c.amount}`).join(" + ");
 
-  function handleSend() {
-    const message = buildReminderMessage(tenant, payment);
-    const link = buildWhatsAppLink(tenant.phone, message);
-    window.open(link, "_blank");
-    onClose();
-  }
+  const message = buildReminderMessage(tenant, payment, variant);
+  const link = buildWhatsAppLink(tenant.phone, message);
+  const incompletePhone = phoneLooksIncomplete(tenant.phone);
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>Bill saved</h2>
+          <h2>{TITLES[variant] || TITLES.new}</h2>
           <button className="modal-close-btn" onClick={onClose} aria-label="Close">
             ×
           </button>
@@ -30,13 +38,27 @@ export default function SendReminderConfirmModal({ tenant, payment, onClose }) {
 
         <p className="reminder-question">Send WhatsApp reminder to {tenant.name} now?</p>
 
+        {incompletePhone && (
+          <div className="error-message">
+            This tenant's phone number ({tenant.phone || "empty"}) looks incomplete —
+            the WhatsApp link below may not open the right chat. You can still try it,
+            or fix their number first via "Edit tenant" in the popup.
+          </div>
+        )}
+
         <div className="reminder-actions">
           <button type="button" className="secondary-btn" onClick={onClose}>
             Not now
           </button>
-          <button type="button" className="whatsapp-send-btn" onClick={handleSend}>
+          <a
+            href={link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="whatsapp-send-btn"
+            onClick={onClose}
+          >
             Send WhatsApp reminder
-          </button>
+          </a>
         </div>
       </div>
     </div>

@@ -87,6 +87,11 @@
   padding: 0.6rem;
   font-weight: 600;
   cursor: pointer;
+  text-decoration: none;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .whatsapp-send-btn:hover {

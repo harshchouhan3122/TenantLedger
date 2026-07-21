@@ -5,12 +5,25 @@ from flask_jwt_extended import jwt_required, get_jwt, get_jwt_identity
 from models.tenant import (
     create_tenant,
     get_tenants_for_admin,
+    get_tenant_by_id,
     get_active_tenant_for_property,
     move_out_tenant,
+    update_tenant,
     update_tenant_documents,
 )
 from models.property import get_property_by_id
 from utils import serialize_doc
+
+# Defensive import: if drive_utils.py is missing, or the Google packages
+# aren't installed yet, the app should still start and tenants should still
+# be creatable — just without the auto-folder feature. This mirrors the
+# same "Drive is optional" philosophy as the try/except around the actual
+# API call further below.
+try:
+    from drive_utils import create_tenant_folder
+except Exception as e:
+    print(f"Drive integration not available (drive_utils.py missing or misconfigured): {e}")
+    create_tenant_folder = None
 
 tenants_bp = Blueprint("tenants", __name__)
 
@@ -63,6 +76,17 @@ def add_tenant():
         )
 
     tenant_doc = create_tenant(admin_id, property_id, name, phone, aadhar_no, move_in_date)
+
+    try:
+        if create_tenant_folder:
+            folder_name = f"{property_doc['name']} - {name}"
+            folder_link = create_tenant_folder(folder_name)
+            if folder_link:
+                update_tenant_documents(tenant_doc["_id"], admin_id, folder_link)
+                tenant_doc["documents"]["driveFolderLink"] = folder_link
+    except Exception as e:
+        print(f"Drive folder creation skipped for tenant '{name}': {e}")
+
     return jsonify(_tenant_public(tenant_doc)), 201
 
 
@@ -76,6 +100,31 @@ def list_tenants():
     property_id = request.args.get("propertyId")
     tenants = get_tenants_for_admin(admin_id, property_id)
     return jsonify([_tenant_public(t) for t in tenants])
+
+
+@tenants_bp.route("/<tenant_id>", methods=["PATCH"])
+@jwt_required()
+def edit_tenant(tenant_id):
+    admin_id = require_admin()
+    if not admin_id:
+        return jsonify({"error": "Only admins can do this"}), 403
+
+    data = request.get_json(silent=True) or {}
+    name = (data.get("name") or "").strip()
+    phone = (data.get("phone") or "").strip()
+    # Aadhar is optional on edit — blank means "leave it unchanged".
+    aadhar_no = (data.get("aadharNo") or "").strip()
+    move_in_date = (data.get("moveInDate") or "").strip()
+
+    if not name or not phone or not move_in_date:
+        return jsonify({"error": "Name, phone, and move-in date are required"}), 400
+
+    success = update_tenant(tenant_id, admin_id, name, phone, aadhar_no or None, move_in_date)
+    if not success:
+        return jsonify({"error": "Tenant not found"}), 404
+
+    updated = get_tenant_by_id(tenant_id, admin_id)
+    return jsonify(_tenant_public(updated))
 
 
 @tenants_bp.route("/<tenant_id>/move-out", methods=["PATCH"])

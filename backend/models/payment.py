@@ -55,10 +55,13 @@ def get_payment_by_id(payment_id, admin_id):
 
 def update_payment(payment_id, admin_id, charges, due_amount, due_reason, remark, due_date):
     """
-    Only succeeds while status is still 'pending' — enforced directly in the
-    query filter, not just checked beforehand in the route. This is the
-    actual lock: even if two requests raced each other, only one could ever
-    match this filter once status flips to 'paid'.
+    Only succeeds while status is still 'pending' — enforced in the query
+    filter. IMPORTANT: success is judged by matched_count, not
+    modified_count. MongoDB reports modified_count as 0 whenever the new
+    values happen to be identical to what was already stored — that's not
+    a failure, the document was still found and matched the filter fine.
+    Using modified_count here was the bug that caused "Couldn't update"
+    errors on saves that didn't actually change any values.
     """
     result = payments_collection.update_one(
         {"_id": ObjectId(payment_id), "adminId": ObjectId(admin_id), "status": "pending"},
@@ -71,11 +74,10 @@ def update_payment(payment_id, admin_id, charges, due_amount, due_reason, remark
             }
         },
     )
-    return result.modified_count > 0
+    return result.matched_count > 0
 
 
 def delete_payment(payment_id, admin_id):
-    """Only succeeds while status is still 'pending' — same lock as above."""
     result = payments_collection.delete_one(
         {"_id": ObjectId(payment_id), "adminId": ObjectId(admin_id), "status": "pending"}
     )
@@ -93,7 +95,7 @@ def mark_paid(payment_id, admin_id, paid_through):
             }
         },
     )
-    return result.modified_count > 0
+    return result.matched_count > 0
 
 
 def unmark_paid(payment_id, admin_id):
@@ -105,4 +107,4 @@ def unmark_paid(payment_id, admin_id):
         {"_id": ObjectId(payment_id), "adminId": ObjectId(admin_id), "status": "paid"},
         {"$set": {"status": "pending", "paidDate": None, "paidThrough": None}},
     )
-    return result.modified_count > 0
+    return result.matched_count > 0

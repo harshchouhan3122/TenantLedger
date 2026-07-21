@@ -422,6 +422,27 @@ export default function Dashboard() {
                 : prev
             );
           }}
+          onTenantUpdated={(updatedTenant) => {
+            // The edited tenant may have a new name — since properties
+            // display activeTenantName directly, refresh that list too if
+            // this tenant is currently the active one.
+            loadProperties();
+
+            setTenantHistory((prev) => {
+              const next = { ...prev };
+              for (const propId of Object.keys(next)) {
+                next[propId] = next[propId].map((t) =>
+                  t._id === updatedTenant._id ? { ...t, ...updatedTenant } : t
+                );
+              }
+              return next;
+            });
+            setSelectedTenantContext((prev) =>
+              prev && prev.tenant._id === updatedTenant._id
+                ? { ...prev, tenant: { ...prev.tenant, ...updatedTenant } }
+                : prev
+            );
+          }}
         />
       )}
     </div>
