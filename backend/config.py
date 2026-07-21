@@ -20,7 +20,8 @@ class Config:
 
     # "Lax" blocks the cookie from being sent on cross-site requests
     # initiated elsewhere, while still allowing normal same-site navigation.
-    JWT_COOKIE_SAMESITE = "Lax"
+    # JWT_COOKIE_SAMESITE = "Lax"
+    JWT_COOKIE_SAMESITE = ( "None" if IS_PRODUCTION else "Lax")
 
     # Adds a second, non-httpOnly CSRF cookie. Since the JWT cookie itself
     # is sent automatically by the browser, this extra token (which the
