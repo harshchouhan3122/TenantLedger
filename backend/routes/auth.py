@@ -1,6 +1,8 @@
+import bcrypt
+
+from firebase_admin import auth as firebase_auth
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import ( create_access_token, create_refresh_token, jwt_required, get_jwt_identity, get_jwt, set_access_cookies, set_refresh_cookies, unset_jwt_cookies )
-import bcrypt
 
 from models.user import (
     find_user_by_phone,
@@ -8,6 +10,8 @@ from models.user import (
     find_user_by_id,
     update_user_profile,
     update_password,
+    create_user,
+    user_exists,
 )
 
 auth_bp = Blueprint("auth", __name__)
@@ -52,6 +56,78 @@ def login():
     set_access_cookies(response, access_token)
     set_refresh_cookies(response, refresh_token)
     return response
+
+@auth_bp.route("/register", methods=["POST"])
+def register():
+
+    data = request.get_json(silent=True) or {}
+
+    name = data.get("name", "").strip()
+    password = data.get("password", "")
+    firebase_token = data.get("firebaseToken")
+
+    if not name or not password or not firebase_token:
+        return jsonify({"error": "All fields are required"}), 400
+
+    try:
+
+        decoded = firebase_auth.verify_id_token(firebase_token)
+
+        phone = decoded.get("phone_number")
+
+        print("Firebase Phone:", phone)
+        print("User Exists:", user_exists(phone))
+
+        if not phone:
+            return jsonify({"error": "Phone number not found"}), 400
+
+        if user_exists(phone):
+            return jsonify({"error": "User already exists with this contact no."}), 409
+
+        user_id = create_user(
+            name=name,
+            phone=phone,
+            password=password,
+        )
+
+        user = find_user_by_id(user_id)
+
+        identity = str(user["_id"])
+
+        additional_claims = {
+            "role": user["role"],
+            "name": user["name"],
+            "tenantId": str(user["tenantId"]) if user.get("tenantId") else None,
+        }
+
+        access_token = create_access_token(
+            identity=identity,
+            additional_claims=additional_claims,
+        )
+
+        refresh_token = create_refresh_token(
+            identity=identity,
+            additional_claims=additional_claims,
+        )
+
+        response = jsonify(
+            {
+                "user": {
+                    "id": identity,
+                    "name": user["name"],
+                    "phone": user["phone"],
+                    "role": user["role"],
+                }
+            }
+        )
+
+        set_access_cookies(response, access_token)
+        set_refresh_cookies(response, refresh_token)
+
+        return response
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
 
 
 @auth_bp.route("/refresh", methods=["POST"])

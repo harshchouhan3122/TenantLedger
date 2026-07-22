@@ -9,6 +9,8 @@ def find_user_by_phone(phone):
     """Look up a user (admin or tenant) by their phone number."""
     return users_collection.find_one({"phone": phone})
 
+def user_exists(phone):
+    return users_collection.find_one({"phone": phone}) is not None
 
 def create_user(name, phone, password, role="admin", tenant_id=None):
     """
