@@ -4,6 +4,7 @@ import TenantDetailModal from "../components/TenantDetailModal";
 import PropertyHistoryModal from "../components/PropertyHistoryModal";
 import PropertyChargeTypesModal from "../components/PropertyChargeTypesModal";
 import "./Dashboard.css";
+import UniversalReminderModal from "../components/UniversalReminderModal";
 
 const today = new Date().toISOString().split("T")[0];
 
@@ -51,6 +52,8 @@ export default function Dashboard() {
   // or null if closed. The property is needed alongside the tenant so the
   // billing form can pre-fill from that property's charge type template.
   const [selectedTenantContext, setSelectedTenantContext] = useState(null);
+
+  const [universalReminderList, setUniversalReminderList] = useState(null);
 
   const loadProperties = useCallback(async () => {
     setListLoading(true);
@@ -200,14 +203,101 @@ export default function Dashboard() {
     );
   }
 
+
+  // async function handleUniversalReminder() {
+  //   try {
+  //     const response = await apiClient.get("/payments/pending-reminders");
+
+  //     if (!response.data.length) {
+  //       alert("No pending payments found.");
+  //       return;
+  //     }
+
+  //     setUniversalReminderList(response.data);
+  //   } catch (err) {
+  //     alert("Couldn't load pending reminders.");
+  //   }
+  // }
+
+async function handleUniversalReminder() {
+    // setUniversalReminderList([
+    //   {
+    //     tenant: {
+    //       name: "Harsh",
+    //       phone: "7042137441",
+    //     },
+    //     payment: {
+    //       _id: "1",
+    //       month: "2026-07",
+    //       charges: [
+    //         {
+    //           label: "Rent",
+    //           amount: 5000,
+    //         },
+    //       ],
+    //       due: {
+    //         amount: 0,
+    //       },
+    //     },
+    //   },
+    //   {
+    //     tenant: {
+    //       name: "Rahul",
+    //       phone: "8851428345",
+    //     },
+    //     payment: {
+    //       _id: "2",
+    //       month: "2026-07",
+    //       charges: [
+    //         {
+    //           label: "Rent",
+    //           amount: 6500,
+    //         },
+    //       ],
+    //       due: {
+    //         amount: 500,
+    //         reason: "Previous month",
+    //       },
+    //     },
+    //   },
+    // ]);
+  
+    const response = await apiClient.get(
+      "/payments/pending-reminders"
+    );
+
+    setUniversalReminderList(response.data);
+  
+  }
+
   return (
     <div className="dashboard-page">
       <h1 className="page-title">Properties</h1>
 
+      <button
+        className="send-reminder-floating-btn"
+        onClick={handleUniversalReminder}
+      >
+        Send Reminder
+      </button>
+
+      {/* <button className="add-property-floating-btn" onClick={() => setShowPropertyForm((v) => !v)}>
+          {showPropertyForm ? "Cancel" : "+ Add property"}
+      </button> */}
+
       <div className="dashboard-actions">
+
+        {/* <button
+          className="primary-btn send-remainder-btn"
+          onClick={handleUniversalReminder}
+        >
+          📢 Send Reminder
+        </button> */}
+
         <button className="primary-btn" onClick={() => setShowPropertyForm((v) => !v)}>
           {showPropertyForm ? "Cancel" : "+ Add property"}
         </button>
+
       </div>
 
       {showPropertyForm && (
@@ -445,6 +535,14 @@ export default function Dashboard() {
           }}
         />
       )}
+
+      {universalReminderList && (
+        <UniversalReminderModal
+          reminders={universalReminderList}
+          onClose={() => setUniversalReminderList(null)}
+        />
+      )}
+
     </div>
   );
 }

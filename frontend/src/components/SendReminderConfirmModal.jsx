@@ -12,7 +12,14 @@ const TITLES = {
   reminder: "Send reminder",
 };
 
-export default function SendReminderConfirmModal({ tenant, payment, variant = "new", onClose }) {
+export default function SendReminderConfirmModal({
+    tenant,
+    payment,
+    reminders,
+    variant="new",
+    onClose
+}) {
+  
   const total = paymentTotal(payment);
   const chargesSummary = payment.charges.map((c) => `${c.label} ₹${c.amount}`).join(" + ");
 

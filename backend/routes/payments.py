@@ -1,6 +1,9 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt, get_jwt_identity
 
+from models.payment import get_pending_payments
+from models.property import get_property_by_id
+
 from models.payment import (
     create_payment,
     get_payment_for_tenant_month,
@@ -10,6 +13,7 @@ from models.payment import (
     delete_payment,
     mark_paid,
     unmark_paid,
+    get_pending_payments,
 )
 from models.tenant import get_tenant_by_id
 from utils import serialize_doc
@@ -186,3 +190,39 @@ def unmark_payment_paid(payment_id):
         return jsonify({"error": "Bill not found or not currently marked paid"}), 404
 
     return jsonify({"status": "pending"})
+
+
+@payments_bp.route("/pending-reminders", methods=["GET"])
+@jwt_required()
+def pending_reminders():
+    admin_id = require_admin()
+    if not admin_id:
+        return jsonify({"error": "Only admins can do this"}), 403
+
+    pending = get_pending_payments(admin_id)
+
+    reminders = []
+
+    for payment in pending:
+        tenant = get_tenant_by_id(str(payment["tenantId"]), admin_id)
+
+        if not tenant:
+            continue
+
+        property_obj = get_property_by_id(
+            str(payment["propertyId"]),
+            admin_id,
+        )
+
+        if not property_obj:
+            continue
+
+        reminders.append(
+            {
+                "tenant": serialize_doc(tenant),
+                "payment": serialize_doc(payment),
+                "property": serialize_doc(property_obj),
+            }
+        )
+
+    return jsonify(reminders)

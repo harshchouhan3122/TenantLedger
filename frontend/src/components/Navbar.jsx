@@ -22,6 +22,7 @@ export default function Navbar() {
       <div className="navbar-right">
         {isAuthenticated ? (
           <>
+
             {user?.role === "master" && (
                 <button
                   className="navbar-users-btn"

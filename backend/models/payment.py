@@ -108,3 +108,15 @@ def unmark_paid(payment_id, admin_id):
         {"$set": {"status": "pending", "paidDate": None, "paidThrough": None}},
     )
     return result.matched_count > 0
+
+
+
+def get_pending_payments(admin_id):
+    return list(
+        payments_collection.find(
+            {
+                "adminId": ObjectId(admin_id),
+                "status": "pending",
+            }
+        ).sort("dueDate", 1)
+    )
