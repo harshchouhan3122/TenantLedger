@@ -114,6 +114,10 @@
     background: #e5e7eb;
 }
 
+.navbar-users-btn {
+  margin-right: 12px;
+}
+
 @keyframes fadeIn {
     from {
         opacity: 0;

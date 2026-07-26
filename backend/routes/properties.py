@@ -19,7 +19,7 @@ VALID_TYPES = ("shop", "house")
 
 def require_admin():
     claims = get_jwt()
-    if claims.get("role") != "admin":
+    if claims.get("role") not in ["admin", "master"]:
         return None
     return get_jwt_identity()
 
