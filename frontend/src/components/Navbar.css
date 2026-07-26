@@ -73,3 +73,26 @@
 .app-content {
   padding-top: 60px;
 }
+
+.navbar-username{
+    cursor:pointer;
+    font-weight:600;
+}
+
+.navbar-username:hover{
+    color:#2563eb;
+}
+
+.navbar-users-btn{
+  background: none;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 0.4rem 0.9rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: #374151;
+}
+
+.navbar-users-btn:hover {
+  background: #f9fafb;
+}

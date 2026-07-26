@@ -9,6 +9,7 @@
   font-size: 1.5rem;
   color: #1a1a1a;
   text-align: center;
+  /* margin-bottom: 3rem; */
 }
 
 .dashboard-actions {
@@ -41,6 +42,7 @@
   flex-direction: column;
   gap: 0.4rem;
   max-width: 400px;
+  margin-bottom: 3rem;
 }
 
 .property-form h3 {
@@ -140,10 +142,10 @@
   cursor: pointer;
   white-space: nowrap;
 }
-
+/* 
 .delete-btn:hover {
   background: #fef2f2;
-}
+} */
 
 .property-name {
   font-weight: 600;
@@ -311,3 +313,61 @@
   margin: 0 auto 1rem auto;
   text-align: center;
 }
+
+
+.send-remainder-btn {
+  margin-right: 1rem;
+}
+
+
+.dashboard-page {
+  position: relative;
+}
+
+.send-reminder-floating-btn {
+  position: absolute;
+  top: 30px;
+  /* right: 20px; */
+  right: 5px;
+
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+
+  background: #0d6efd;
+  color: white;
+
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+
+  transition: background 0.2s ease;
+}
+
+.send-reminder-floating-btn:hover {
+  background: #1d4ed8;
+}
+
+/* 
+.add-property-floating-btn {
+  position: absolute;
+  top: 30px;
+  right: 150px;
+
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+
+  background: #0d6efd;
+  color: white;
+
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+
+  transition: background 0.2s ease;
+}
+
+.add-property-floating-btn:hover {
+  background: #1d4ed8;
+} */

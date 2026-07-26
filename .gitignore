@@ -2,6 +2,7 @@
 backend/venv/
 backend/__pycache__/
 backend/.env
+backend/firebase/serviceAccountKey.json
 
 # Node
 frontend/node_modules/

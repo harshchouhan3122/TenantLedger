@@ -1,0 +1,67 @@
+.users-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 25px;
+  background: white;
+}
+
+.users-table th,
+.users-table td {
+  padding: 14px;
+  border-bottom: 1px solid #eee;
+  text-align: left;
+}
+
+.users-table th {
+  background: #f8f9fa;
+  font-weight: 600;
+}
+
+.role-badge {
+  padding: 6px 12px;
+  border-radius: 20px;
+  color: white;
+  font-size: 13px;
+  text-transform: capitalize;
+}
+
+.role-badge.master {
+  background: #0d6efd;
+}
+
+.role-badge.admin {
+  background: #198754;
+}
+
+.role-badge.tenant {
+  background: #fd7e14;
+}
+
+.edit-btn,
+.delete-btn {
+  border: none;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 6px;
+  margin-right: 8px;
+}
+
+.edit-btn {
+  background: #ffc107;
+}
+
+.delete-btn {
+  background: #dc3545;
+  color: white;
+}
+
+
+.reset-btn{
+    background:#0d6efd;
+    color:white;
+    border:none;
+    padding:8px 12px;
+    border-radius:6px;
+    cursor:pointer;
+    margin-right:8px;
+}

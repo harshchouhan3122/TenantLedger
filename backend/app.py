@@ -8,6 +8,8 @@ from routes.auth import auth_bp
 from routes.properties import properties_bp
 from routes.tenants import tenants_bp
 from routes.payments import payments_bp
+# import backend.firebase_config as firebase_config
+import firebase_config
 
 app = Flask(__name__)
 app.config.from_object(Config)

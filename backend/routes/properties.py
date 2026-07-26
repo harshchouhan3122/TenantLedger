@@ -8,6 +8,8 @@ from models.property import (
     add_charge_type,
     update_charge_type,
     delete_charge_type,
+    property_name_exists,
+
 )
 from models.tenant import get_active_tenant_for_property
 from utils import serialize_doc
@@ -19,7 +21,7 @@ VALID_TYPES = ("shop", "house")
 
 def require_admin():
     claims = get_jwt()
-    if claims.get("role") != "admin":
+    if claims.get("role") not in ["admin", "master"]:
         return None
     return get_jwt_identity()
 
@@ -45,9 +47,13 @@ def add_property():
 
     if not name:
         return jsonify({"error": "Property name is required"}), 400
+    
     if property_type not in VALID_TYPES:
         return jsonify({"error": "Type must be 'shop' or 'house'"}), 400
-
+    
+    if property_name_exists(admin_id, name):
+        return jsonify({ "error": "A property with this name already exists."}), 409
+        
     property_doc = create_property(admin_id, name, property_type, address)
     return jsonify(serialize_doc(property_doc)), 201
 
@@ -159,3 +165,4 @@ def remove_property_charge_type(property_id, charge_type_id):
         return jsonify({"error": "Charge type not found"}), 404
 
     return jsonify({"status": "deleted"})
+

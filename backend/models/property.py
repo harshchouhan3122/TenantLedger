@@ -95,3 +95,16 @@ def delete_charge_type(property_id, admin_id, charge_type_id):
         {"$pull": {"chargeTypes": {"id": charge_type_id}}},
     )
     return result.matched_count > 0
+
+
+def property_name_exists(admin_id, name):
+    
+    normalized_name = " ".join(name.strip().lower().split())
+
+    for property_doc in properties_collection.find({"adminId": ObjectId(admin_id)}):
+        existing_name = " ".join(property_doc.get("name", "").strip().lower().split())
+
+        if existing_name == normalized_name:
+            return True
+
+    return False

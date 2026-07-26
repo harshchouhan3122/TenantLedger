@@ -1,6 +1,23 @@
+import bcrypt
+
+from firebase_admin import auth as firebase_auth
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import ( create_access_token, create_refresh_token, jwt_required, get_jwt_identity, get_jwt, set_access_cookies, set_refresh_cookies, unset_jwt_cookies )
-from models.user import find_user_by_phone, verify_password
+
+from models.user import (
+    find_user_by_phone,
+    verify_password,
+    find_user_by_id,
+    update_user_profile,
+    update_password,
+    create_user,
+    user_exists,
+    get_users, 
+    update_user,
+    delete_user,
+    phone_exists_except_user,
+    reset_user_password,
+)
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -44,6 +61,270 @@ def login():
     set_access_cookies(response, access_token)
     set_refresh_cookies(response, refresh_token)
     return response
+
+@auth_bp.route("/register", methods=["POST"])
+def register():
+
+    data = request.get_json(silent=True) or {}
+
+    name = data.get("name", "").strip()
+    password = data.get("password", "")
+    firebase_token = data.get("firebaseToken")
+
+    if not name or not password or not firebase_token:
+        return jsonify({"error": "All fields are required"}), 400
+
+    try:
+
+        decoded = firebase_auth.verify_id_token(firebase_token)
+
+        phone = decoded.get("phone_number")
+
+        print("Firebase Phone:", phone)
+        print("User Exists:", user_exists(phone))
+
+        if not phone:
+            return jsonify({"error": "Phone number not found"}), 400
+
+        if user_exists(phone):
+            return jsonify({"error": "User already exists with this contact no."}), 409
+
+        user_id = create_user(
+            name=name,
+            phone=phone,
+            password=password,
+        )
+
+        user = find_user_by_id(user_id)
+
+        identity = str(user["_id"])
+
+        additional_claims = {
+            "role": user["role"],
+            "name": user["name"],
+            "tenantId": str(user["tenantId"]) if user.get("tenantId") else None,
+        }
+
+        access_token = create_access_token(
+            identity=identity,
+            additional_claims=additional_claims,
+        )
+
+        refresh_token = create_refresh_token(
+            identity=identity,
+            additional_claims=additional_claims,
+        )
+
+        response = jsonify(
+            {
+                "user": {
+                    "id": identity,
+                    "name": user["name"],
+                    "phone": user["phone"],
+                    "role": user["role"],
+                }
+            }
+        )
+
+        set_access_cookies(response, access_token)
+        set_refresh_cookies(response, refresh_token)
+
+        return response
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+    
+@auth_bp.route("/create-user", methods=["POST"])
+@jwt_required()
+def create_new_user():
+
+    current_user = find_user_by_id(get_jwt_identity())
+
+    if current_user["role"] != "master":
+        return jsonify({
+            "error": "Only master user can create users."
+        }), 403
+
+    data = request.get_json(silent=True) or {}
+
+    name = data.get("name", "").strip()
+    phone = data.get("phone", "").strip()
+    password = data.get("password", "")
+    role = data.get("role", "admin")
+
+    if not name or not phone or not password:
+        return jsonify({
+            "error": "All fields are required."
+        }), 400
+
+    if role not in ["master", "admin", "tenant"]:
+        return jsonify({
+            "error": "Invalid role."
+        }), 400
+
+    phone = "+91" + phone
+
+    if user_exists(phone):
+        return jsonify({
+            "error": "User already exists with this contact number."
+        }), 409
+
+    user_id = create_user(
+        name=name,
+        phone=phone,
+        password=password,
+        role=role,
+    )
+
+    user = find_user_by_id(user_id)
+
+    return jsonify({
+        "message": "User created successfully.",
+        "user": {
+            "id": str(user["_id"]),
+            "name": user["name"],
+            "phone": user["phone"],
+            "role": user["role"],
+        }
+    }), 201
+
+
+@auth_bp.route("/users", methods=["GET"])
+@jwt_required()
+def users():
+
+    current_user = find_user_by_id(get_jwt_identity())
+
+    if current_user["role"] != "master":
+        return jsonify(
+            {
+                "error": "Unauthorized."
+            }
+        ), 403
+
+    return jsonify(get_users())
+
+@auth_bp.route("/users/<user_id>", methods=["PUT"])
+@jwt_required()
+def update_existing_user(user_id):
+
+    current_user = find_user_by_id(get_jwt_identity())
+
+    if current_user["role"] != "master":
+        return jsonify({"error": "Unauthorized"}), 403
+
+    data = request.get_json()
+
+    name = data.get("name", "").strip()
+    phone = data.get("phone", "").strip()
+    role = data.get("role", "").strip()
+
+    if not name:
+        return jsonify({"error": "Name is required"}), 400
+
+    if not phone.isdigit() or len(phone) != 10:
+        return jsonify({"error": "Invalid phone number"}), 400
+
+    if role not in ["master", "admin", "tenant"]:
+        return jsonify({"error": "Invalid role"}), 400
+
+    full_phone = "+91" + phone
+
+    if phone_exists_except_user(full_phone, user_id):
+        return jsonify({"error": "Phone already exists"}), 409
+
+    updated = update_user(
+        user_id,
+        name,
+        full_phone,
+        role,
+    )
+
+    if not updated:
+        return jsonify({"error": "User not found"}), 404
+
+    return jsonify(
+        {
+            "message": "User updated successfully."
+        }
+    )
+
+@auth_bp.route("/users/<user_id>", methods=["DELETE"])
+@jwt_required()
+def delete_existing_user(user_id):
+
+    current_user = find_user_by_id(get_jwt_identity())
+
+    if current_user["role"] != "master":
+        return jsonify({"error": "Unauthorized"}), 403
+
+    if str(current_user["_id"]) == user_id:
+        return jsonify(
+            {
+                "error": "You cannot delete your own account."
+            }
+        ), 403
+
+    deleted = delete_user(user_id)
+
+    if not deleted:
+        return jsonify({"error": "User not found"}), 404
+
+    return jsonify(
+        {
+            "message": "User deleted successfully."
+        }
+    )
+
+
+@auth_bp.route("/users/<user_id>/reset-password", methods=["PUT"])
+@jwt_required()
+def reset_password(user_id):
+
+    current_user = find_user_by_id(get_jwt_identity())
+
+    if current_user["role"] != "master":
+        return jsonify(
+            {
+                "error": "Unauthorized."
+            }
+        ), 403
+
+    data = request.get_json()
+
+    password = data.get("password", "").strip()
+
+    if len(password) < 6:
+        return jsonify(
+            {
+                "error": "Password must be at least 6 characters."
+            }
+        ), 400
+
+    if str(current_user["_id"]) == user_id:
+        return jsonify(
+            {
+                "error": "Use Change Password to update your own password."
+            }
+        ), 403
+
+    success = reset_user_password(
+        user_id,
+        password,
+    )
+
+    if not success:
+        return jsonify(
+            {
+                "error": "User not found."
+            }
+        ), 404
+
+    return jsonify(
+        {
+            "message": "Password reset successfully."
+        }
+    )
 
 
 @auth_bp.route("/refresh", methods=["POST"])
@@ -89,5 +370,90 @@ def me():
             "role": claims.get("role"),
             "name": claims.get("name"),
             "tenantId": claims.get("tenantId"),
+        }
+    )
+
+
+@auth_bp.route("/profile", methods=["GET"])
+@jwt_required()
+def profile():
+
+    user = find_user_by_id(get_jwt_identity())
+
+    return jsonify(
+        {
+            "id": str(user["_id"]),
+            "name": user["name"],
+            "phone": user["phone"],
+            "role": user["role"],
+        }
+    )
+
+
+@auth_bp.route("/profile", methods=["PATCH"])
+@jwt_required()
+def edit_profile():
+
+    data = request.get_json(silent=True) or {}
+
+    name = data.get("name", "").strip()
+    phone = data.get("phone", "").strip()
+
+    if not name:
+        return jsonify({"error": "Name is required"}), 400
+
+    if not phone:
+        return jsonify({"error": "Phone is required"}), 400
+
+    user = update_user_profile(
+        get_jwt_identity(),
+        name,
+        phone,
+    )
+
+    return jsonify(
+        {
+            "id": str(user["_id"]),
+            "name": user["name"],
+            "phone": user["phone"],
+            "role": user["role"],
+        }
+    )
+
+
+@auth_bp.route("/change-password", methods=["PATCH"])
+@jwt_required()
+def change_password():
+
+    data = request.get_json(silent=True) or {}
+
+    current_password = data.get("currentPassword", "")
+    new_password = data.get("newPassword", "")
+    confirm_password = data.get("confirmPassword", "")
+
+    if not current_password or not new_password or not confirm_password:
+        return jsonify({"error": "All fields are required."}), 400
+
+    if new_password != confirm_password:
+        return jsonify({"error": "Passwords do not match."}), 400
+
+    user = find_user_by_id(get_jwt_identity())
+
+    if not verify_password(current_password, user["passwordHash"]):
+        return jsonify({"error": "Current password is incorrect."}), 401
+
+    password_hash = bcrypt.hashpw(
+        new_password.encode("utf-8"),
+        bcrypt.gensalt(),
+    ).decode("utf-8")
+
+    update_password(
+        get_jwt_identity(),
+        password_hash,
+    )
+
+    return jsonify(
+        {
+            "message": "Password updated successfully."
         }
     )

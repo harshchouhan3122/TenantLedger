@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import "./Login.css";
+import { Link } from "react-router-dom";
+import { normalizePhone } from "../utils/validateData";
 
 export default function Login() {
   const [phone, setPhone] = useState("");
@@ -11,7 +13,7 @@ export default function Login() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    const success = await login(phone.trim(), password);
+    const success = await login(normalizePhone(phone), password);
     if (success) {
       navigate("/dashboard");
     }
@@ -49,6 +51,15 @@ export default function Login() {
         <button type="submit" disabled={submitting}>
           {submitting ? "Signing in…" : "Sign in"}
         </button>
+
+        <div className="auth-footer">
+          <span>Don't have an account?</span>
+
+          <Link to="/signup">
+            Create Account
+          </Link>
+        </div>
+
       </form>
     </div>
   );
