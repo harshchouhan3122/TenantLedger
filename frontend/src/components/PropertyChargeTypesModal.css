@@ -124,9 +124,9 @@
   border-color: #fecaca;
 }
 
-.charge-type-delete-btn:hover {
+/* .charge-type-delete-btn:hover {
   background: #fef2f2;
-}
+} */
 
 .charge-type-add-form {
   display: flex;

@@ -22,6 +22,15 @@ export default function Navbar() {
       <div className="navbar-right">
         {isAuthenticated ? (
           <>
+            {user?.role === "master" && (
+                <button
+                  className="navbar-users-btn"
+                  onClick={() => navigate("/users")}
+                >
+                  Users
+                </button>
+              )}
+
             <div
               className="navbar-username"
               onClick={() => setShowProfile(true)}
@@ -36,7 +45,11 @@ export default function Navbar() {
 
             <button
               className="navbar-logout-btn"
-              onClick={logout}
+              // onClick={logout}
+              onClick={async () => {
+                  await logout();
+                  navigate("/login");
+              }}
             >
               Log out
             </button>
