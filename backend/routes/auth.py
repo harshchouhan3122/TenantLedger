@@ -2,7 +2,7 @@ import bcrypt
 
 from firebase_admin import auth as firebase_auth
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import ( create_access_token, create_refresh_token, jwt_required, get_jwt_identity, get_jwt, set_access_cookies, set_refresh_cookies, unset_jwt_cookies )
+from flask_jwt_extended import ( create_access_token, create_refresh_token, jwt_required, get_jwt_identity, get_jwt, set_access_cookies, set_refresh_cookies, unset_jwt_cookies, get_csrf_token )
 
 from models.user import (
     find_user_by_phone,
@@ -55,7 +55,8 @@ def login():
                 "name": user["name"],
                 "phone": user["phone"],
                 "role": user["role"],
-            }
+            },
+            "csrf": get_csrf_token(access_token),
         }
     )
     set_access_cookies(response, access_token)
@@ -122,7 +123,8 @@ def register():
                     "name": user["name"],
                     "phone": user["phone"],
                     "role": user["role"],
-                }
+                },
+                "csrf": get_csrf_token(access_token),
             }
         )
 
@@ -344,7 +346,10 @@ def refresh():
     }
     new_access_token = create_access_token(identity=identity, additional_claims=additional_claims)
 
-    response = jsonify({"status": "refreshed"})
+    response = jsonify({
+        "status": "refreshed",
+        "csrf": get_csrf_token(new_access_token),
+    })
     set_access_cookies(response, new_access_token)
     return response
 

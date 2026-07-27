@@ -41,27 +41,17 @@ const apiClient = axios.create({
 
 
 
-
 apiClient.interceptors.request.use((config) => {
-  console.log("===== INTERCEPTOR =====");
-  console.log("Document Cookie:", document.cookie);
-  
   const method = (config.method || "get").toLowerCase();
-  
+
   if (method !== "get") {
-    const isRefreshCall = config.url?.includes("/auth/refresh");
-    
-    const csrfToken = getCookie(
-      isRefreshCall ? "csrf_refresh_token" : "csrf_access_token"
-    );
-    
-    console.log("CSRF Token:", csrfToken);
-    
-    config.headers["X-CSRF-TOKEN"] = csrfToken;
-    
-    console.log("Headers:", config.headers);
+    const csrfToken = sessionStorage.getItem("csrf");
+
+    if (csrfToken) {
+      config.headers["X-CSRF-TOKEN"] = csrfToken;
+    }
   }
-  
+
   return config;
 });
 
