@@ -112,8 +112,8 @@ export default function Signup() {
           await credential.user.getIdToken();
 
         await axios.post(
-          "http://localhost:5001/api/auth/register",
-        // '${baseUrl}/api/register'
+          // "http://localhost:5001/api/auth/register",
+        `${baseUrl}/api/register`,
           {
             name,
             password,
