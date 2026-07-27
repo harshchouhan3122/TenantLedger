@@ -14,7 +14,10 @@ import firebase_config
 app = Flask(__name__)
 app.config.from_object(Config)
 
-CORS(app, supports_credentials=True, origins=["http://localhost:5173"])
+import os
+frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+
+CORS( app, supports_credentials=True, origins=[frontend_url])
 
 jwt = JWTManager(app)
 
