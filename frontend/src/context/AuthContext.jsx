@@ -45,6 +45,8 @@ export function AuthProvider({ children }) {
     setSubmitting(true);
     try {
       const response = await apiClient.post("/auth/login", { phone, password });
+      // Save CSRF token
+      sessionStorage.setItem("csrf", response.data.csrf);
       setUser(response.data.user);
       return true;
     } catch (err) {
@@ -64,6 +66,7 @@ export function AuthProvider({ children }) {
       // Clear local state regardless of whether the request succeeded —
       // no point staying "logged in" on the frontend if something went
       // wrong clearing the cookie server-side.
+      sessionStorage.removeItem("csrf");
       setUser(null);
     }
   }, []);
